@@ -52,25 +52,18 @@ public class MpesaController {
                 (String) stkCallback.get("CheckoutRequestID");
 
 
-        Transaction transaction =
-                mpesaService.findByCheckoutId(checkoutId);
-
-
         Integer resultCode =
                 (Integer) stkCallback.get("ResultCode");
 
 
         if(resultCode == 0){
 
-            transaction.setStatus("COMPLETED");
+            mpesaService.updateTransactionStatus(checkoutId, "COMPLETED");
 
         }else{
 
-            transaction.setStatus("FAILED");
+            mpesaService.updateTransactionStatus(checkoutId, "FAILED");
 
         }
-
-
-        // save updated status
     }
 }
