@@ -26,6 +26,9 @@ const emptyForm = {
     paymentMethod: "CASH",
 };
 
+const isCountedTransaction = (t) =>
+    t.paymentMethod !== "MPESA" || t.status === "COMPLETED";
+
 export default function ExpenseTracker() {
     const [baseUrl, setBaseUrl] = useState("http://localhost:8080");
     const [showSettings, setShowSettings] = useState(false);
@@ -78,6 +81,7 @@ export default function ExpenseTracker() {
     const totals = useMemo(() => {
         let income = 0, expense = 0;
         for (const t of transactions) {
+            if (!isCountedTransaction(t)) continue;
             if (t.type === "INCOME") income += Number(t.amount) || 0;
             else expense += Number(t.amount) || 0;
         }
@@ -87,6 +91,7 @@ export default function ExpenseTracker() {
     const categoryTotals = useMemo(() => {
         const map = {};
         for (const t of transactions) {
+            if (!isCountedTransaction(t)) continue;
             if (t.type !== "EXPENSE") continue;
             map[t.category] = (map[t.category] || 0) + (Number(t.amount) || 0);
         }
@@ -166,6 +171,51 @@ export default function ExpenseTracker() {
         }
     }
 
+    const syncMpesaStatus = useCallback(async (checkoutId, showResult = false) => {
+        if (!checkoutId) return;
+
+        try {
+            const res = await fetch(`${baseUrl}/api/mpesa/status/${encodeURIComponent(checkoutId)}`, {
+                method: "POST",
+            });
+            const data = await res.json();
+
+            if (!res.ok || data.status !== "success") {
+                throw new Error(data.message || "Could not check M-Pesa status");
+            }
+
+            setTransactions((prev) =>
+                prev.map((t) =>
+                    t.transactionCode === checkoutId
+                        ? { ...t, status: data.paymentStatus }
+                        : t
+                )
+            );
+
+            if (showResult || data.paymentStatus !== "PENDING") {
+                showToast(`M-Pesa status: ${data.paymentStatus}`, data.paymentStatus === "COMPLETED" ? "ok" : "error");
+            }
+        } catch (err) {
+            if (showResult) {
+                showToast(err.message || "Could not check M-Pesa status", "error");
+            }
+        }
+    }, [baseUrl, showToast]);
+
+    useEffect(() => {
+        const pendingMpesa = transactions.filter(
+            (t) => t.paymentMethod === "MPESA" && t.status === "PENDING" && t.transactionCode
+        );
+
+        if (pendingMpesa.length === 0) return undefined;
+
+        const pollTimer = setInterval(() => {
+            pendingMpesa.forEach((t) => syncMpesaStatus(t.transactionCode));
+        }, 7000);
+
+        return () => clearInterval(pollTimer);
+    }, [syncMpesaStatus, transactions]);
+
     async function sendStkPush(e) {
         e.preventDefault();
         if (!mpesaPhone || !mpesaAmount) {
@@ -188,6 +238,7 @@ export default function ExpenseTracker() {
             if (data.status === "success") {
                 showToast("STK push sent — check your phone");
                 loadTransactions();
+                setTimeout(() => syncMpesaStatus(data.checkoutRequestId), 7000);
             } else {
                 showToast(data.message || "STK push failed", "error");
             }
@@ -340,8 +391,8 @@ export default function ExpenseTracker() {
                                                 {t.status && t.paymentMethod === "MPESA" && (
                                                     <span style={{
                                                         ...styles.statusPill,
-                                                        color: t.status === "COMPLETED" ? "#00A651" : t.status === "FAILED" ? "#FF6B4A" : "#FFB627",
-                                                        borderColor: t.status === "COMPLETED" ? "#00A65155" : t.status === "FAILED" ? "#FF6B4A55" : "#FFB62755",
+                                                        color: t.status === "COMPLETED" ? "#00A651" : t.status === "PENDING" ? "#FFB627" : "#FF6B4A",
+                                                        borderColor: t.status === "COMPLETED" ? "#00A65155" : t.status === "PENDING" ? "#FFB62755" : "#FF6B4A55",
                                                     }}>
                             {t.status === "COMPLETED" ? <Check size={10} /> : t.status === "PENDING" ? <Clock size={10} /> : <X size={10} />}
                                                         {t.status}
@@ -357,6 +408,11 @@ export default function ExpenseTracker() {
                                         <button style={styles.rowIconBtn} onClick={() => openEdit(t)} title="Edit">
                                             <Pencil size={13} />
                                         </button>
+                                        {t.paymentMethod === "MPESA" && t.status === "PENDING" && (
+                                            <button style={styles.rowIconBtn} onClick={() => syncMpesaStatus(t.transactionCode, true)} title="Check M-Pesa status">
+                                                <RefreshCw size={13} />
+                                            </button>
+                                        )}
                                         <button style={styles.rowIconBtn} onClick={() => removeTransaction(t.id)} title="Delete">
                                             <Trash2 size={13} />
                                         </button>

@@ -52,6 +52,7 @@ public class MpesaController {
                 (String) stkCallback.get("CheckoutRequestID");
 
 
+<<<<<<< HEAD
         Integer resultCode =
                 (Integer) stkCallback.get("ResultCode");
 
@@ -66,4 +67,32 @@ public class MpesaController {
 
         }
     }
+=======
+        Object resultCode =
+                stkCallback.get("ResultCode");
+
+        mpesaService.updateTransactionStatus(
+                checkoutId,
+                mpesaService.mapResultCodeToStatus(resultCode)
+        );
+    }
+
+    @PostMapping("/status/{checkoutId}")
+    public Map<String, Object> syncPaymentStatus(@PathVariable String checkoutId) {
+        try {
+            Transaction transaction = mpesaService.queryAndSyncStkStatus(checkoutId);
+
+            return Map.of(
+                    "status", "success",
+                    "transactionId", transaction.getId(),
+                    "paymentStatus", transaction.getStatus()
+            );
+        } catch (Exception e) {
+            return Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            );
+        }
+    }
+>>>>>>> c856101 (Third Commit)
 }
