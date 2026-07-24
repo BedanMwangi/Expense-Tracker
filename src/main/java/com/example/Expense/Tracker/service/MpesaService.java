@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Service
@@ -170,6 +169,10 @@ public class MpesaService {
 
         Transaction transaction =
                 transactionRepo.findByTransactionCode(checkoutId);
+
+        if (transaction == null) {
+            throw new RuntimeException("Transaction not found with checkout ID " + checkoutId);
+        }
 
         transaction.setStatus(status);
 

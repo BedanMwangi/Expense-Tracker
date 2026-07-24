@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
     Plus, Trash2, Pencil, Smartphone, RefreshCw, X,
     ArrowUpRight, ArrowDownRight, Wallet, Check, Clock, AlertCircle
@@ -67,7 +67,13 @@ export default function ExpenseTracker() {
         }
     }, [baseUrl]);
 
-    useEffect(() => { loadTransactions(); }, [loadTransactions]);
+    useEffect(() => {
+        const loadTimer = setTimeout(() => {
+            loadTransactions();
+        }, 0);
+
+        return () => clearTimeout(loadTimer);
+    }, [loadTransactions]);
 
     const totals = useMemo(() => {
         let income = 0, expense = 0;
