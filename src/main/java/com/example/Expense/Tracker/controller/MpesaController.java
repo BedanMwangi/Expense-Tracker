@@ -39,42 +39,33 @@ public class MpesaController {
         }
     }
     @PostMapping("/callback")
-    public void mpesaCallback(
-            @RequestBody Map<String,Object> callback){
+    public Map<String, Object> mpesaCallback(
+            @RequestBody Map<String, Object> callback) {
 
-        Map body = (Map) callback.get("Body");
+        try {
+            Map<?, ?> body = (Map<?, ?>) callback.get("Body");
+            Map<?, ?> stkCallback = (Map<?, ?>) body.get("stkCallback");
 
-        Map stkCallback =
-                (Map) body.get("stkCallback");
+            String checkoutId =
+                    (String) stkCallback.get("CheckoutRequestID");
 
+            Object resultCode = stkCallback.get("ResultCode");
 
-        String checkoutId =
-                (String) stkCallback.get("CheckoutRequestID");
+            mpesaService.updateTransactionStatus(
+                    checkoutId,
+                    mpesaService.mapResultCodeToStatus(resultCode)
+            );
 
-
-<<<<<<< HEAD
-        Integer resultCode =
-                (Integer) stkCallback.get("ResultCode");
-
-
-        if(resultCode == 0){
-
-            mpesaService.updateTransactionStatus(checkoutId, "COMPLETED");
-
-        }else{
-
-            mpesaService.updateTransactionStatus(checkoutId, "FAILED");
-
+            return Map.of(
+                    "ResultCode", 0,
+                    "ResultDesc", "Accepted"
+            );
+        } catch (Exception e) {
+            return Map.of(
+                    "ResultCode", 0,
+                    "ResultDesc", "Accepted"
+            );
         }
-    }
-=======
-        Object resultCode =
-                stkCallback.get("ResultCode");
-
-        mpesaService.updateTransactionStatus(
-                checkoutId,
-                mpesaService.mapResultCodeToStatus(resultCode)
-        );
     }
 
     @PostMapping("/status/{checkoutId}")
@@ -94,5 +85,4 @@ public class MpesaController {
             );
         }
     }
->>>>>>> c856101 (Third Commit)
 }

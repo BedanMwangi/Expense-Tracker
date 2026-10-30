@@ -24,6 +24,7 @@ public class TransactionService {
     }
     public void updateTransaction(Integer id,Transaction transaction){
         Transaction t =repo.findById(id).orElseThrow(() -> new RuntimeException("Transaction not found with ID "+ id));
+       // copying the new values into the existing transaction.
         t.setAmount(transaction.getAmount());
         t.setCategory(transaction.getCategory());
         t.setTransactionDate(transaction.getTransactionDate());
